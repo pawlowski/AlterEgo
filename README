@@ -1,0 +1,6 @@
+AlterEgo Bugzilla extension
+
+==Setup==
+
+Run checksetup.pl, it will import all the words into the bugzilla db and add aliases to all bugs in the database.
+
