@@ -64,7 +64,7 @@ sub db_schema_abstract_schema($$) {
     };
 }
 
-sub update_alterego {
+sub import_alterego_words {
     my ($filename, $tablename) = @_;
     my $dbh = Bugzilla->dbh;
 
@@ -95,8 +95,8 @@ sub install_update_db($$) {
     print STDERR "Importing AlterEgo words...\n";
 
     my $alterego_dir = bz_locations()->{'extensionsdir'} . "/AlterEgo";
-    update_alterego("$alterego_dir/words1.txt", "alterego1");
-    update_alterego("$alterego_dir/words2.txt", "alterego2");
+    import_alterego_words("$alterego_dir/words1.txt", "alterego1");
+    import_alterego_words("$alterego_dir/words2.txt", "alterego2");
 }
 
 sub disabled_bug_fields {
