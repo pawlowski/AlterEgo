@@ -194,4 +194,8 @@ hippo
 camel
 pastry
 pumpkin
-
+belly
+circus
+turnip
+cabbage
+mohawk

@@ -112,3 +112,4 @@ cheesy
 cheeky
 clever
 magic
+faster
