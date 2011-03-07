@@ -5,6 +5,7 @@ use warnings;
 use Bugzilla;
 use Bugzilla::Bug;
 use Bugzilla::User;
+use Bugzilla::Constants;
 use Bugzilla::Util;
 
 use base qw(Bugzilla::Extension);
@@ -63,9 +64,39 @@ sub db_schema_abstract_schema($$) {
     };
 }
 
-sub install_update_db($$) {
+sub update_alterego {
+    my ($filename, $tablename) = @_;
     my $dbh = Bugzilla->dbh;
-    
+
+    # Get the currently entered words
+    my $rows = $dbh->selectall_arrayref("SELECT word FROM $tablename");
+    my ($row, %existing);
+    foreach $row (@{$rows}) {
+        $existing{$row->[0]} = 1;
+    }
+    print "  found " . (keys %existing) . " words in $tablename, ";
+
+    # Use the word lists to populate the alterego word tables
+    my $words = new IO::File($filename, 'r')
+        || die "$filename: $!";
+    my $num_new_words = 0;
+    while (<$words>) {
+        chomp;
+        if (/./ && ! $existing{$_}) {
+            $dbh->do("INSERT INTO $tablename (word) VALUES (?)", undef, $_);
+            $num_new_words += 1;
+        }
+    }
+
+    print "added $num_new_words new ones.\n";
+}
+
+sub install_update_db($$) {
+    print STDERR "Importing AlterEgo words...\n";
+
+    my $alterego_dir = bz_locations()->{'extensionsdir'} . "/AlterEgo";
+    update_alterego("$alterego_dir/words1.txt", "alterego1");
+    update_alterego("$alterego_dir/words2.txt", "alterego2");
 }
 
 sub disabled_bug_fields {
