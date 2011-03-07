@@ -4,3 +4,14 @@ AlterEgo Bugzilla extension
 
 Run checksetup.pl, it will import all the words into the bugzilla db and add aliases to all bugs in the database.
 
+Need to:
+
+* load words from the word files into the db during init (doesn't work right now)
+* only add new words that are not already in the db
+* add alteregos to bugs that don't have one
+
+* Display alterego in bug editing page
+* Display alterego in bug list pages
+* add alterego when creating a new bug
+* allow lookup of bugs using alterego
+* check for duplicate alteregos during checksetup
