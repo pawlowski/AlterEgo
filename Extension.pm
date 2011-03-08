@@ -25,7 +25,7 @@ sub db_schema_abstract_schema($$) {
             word         => {TYPE => 'TINYTEXT', NOTNULL => 1},
         ],
         INDEXES => [
-            alterego1_word_idx  => {FIELDS => ['alterego1_id'],
+            alterego1_word_idx  => {FIELDS => ['word'],
                                      TYPE   => 'UNIQUE'},
         ],
     };
@@ -37,7 +37,7 @@ sub db_schema_abstract_schema($$) {
             word         => {TYPE => 'TINYTEXT', NOTNULL => 1},
         ],
         INDEXES => [
-            alterego2_word_idx  => {FIELDS => ['alterego2_id'],
+            alterego2_word_idx  => {FIELDS => ['word'],
                                      TYPE   => 'UNIQUE'},
         ],
     };
@@ -75,7 +75,7 @@ sub import_alterego_words {
     foreach $row (@{$rows}) {
         $existing{$row->[0]} = 1;
     }
-    print "  found " . (keys %existing) . " words in $tablename, ";
+    print "  found " . (keys %existing) . " words in table $tablename, ";
 
     # Use the word lists to populate the alterego word tables
     my $words = new IO::File($filename, 'r')
@@ -197,65 +197,15 @@ sub disabled_bug_fields {
     sub Bugzilla::Bug::alterego {
         my $self = shift;
 
-# need a pair of numbers, which can be algorithmically determined from an 
-# arbitrary bug number. 
-# dictionary: each word has a unique identifier based on its chars?
-# ideally we'd be able to add to the dict without mucking up the current
-# values
-# also it would be nice to not have the dict be ordered
-# keep it simple: import mechanism for adding new words. the data
-# file contains pairs of words and their ids, which are each unique 
-# numbers. import mechanism randomizes the ordering. import mechanism
-# runs when bugzilla is installed.
-# dict should be stored in mysql?        
-        
-        # get two numbers from the bug_id.
-        my @nums = (1, 1);
-        my $i = 0;
-        my $x = $self->{'bug_id'};
-        while ($x > 0) {
-            if ($x % 2 == 1) {
-                $x--;
-                $nums[$i % 2] += 2 ** (($i - $i % 2) / 2);
-            }
-            $x = $x / 2;
-            $i++;
-        }
-
-        # jumble up the numbers a bit
-        my @jumble = (5, 3, 4, 1, 2, 0);
-        $i = 0;
-        foreach $x (@jumble) {
-            if (($nums[0] % (2 ** $i)) == 1) {
-                $nums[0] = $nums[0] - (2 ** $i) + (2 ** $x);
-            }
-            if (($nums[1] % (2 ** $i)) == 1) {
-                $nums[1] = $nums[1] - (2 ** $i) + (2 ** $x);
-            }
-            $i++;
-        }
-
         # now get the corresponding keywords
         my $dbh = Bugzilla->dbh;
-        my %words;
-        my $sth = $dbh->prepare(<<SQL);
-SELECT ego
-  FROM alterego_l
- WHERE num = $nums[0]
-SQL
-        my @row = $dbh->selectrow_array($sth, undef);
-        my $l = lc($row[0] ? $row[0] : '???');
+        my @vals = $dbh->selectrow_array("SELECT word FROM alterego1, bug_alterego_map WHERE alterego1.alterego1_id = bug_alterego_map.alterego1_id AND bug_alterego_map.bug_id = ?", undef, $self->{'bug_id'});
+        my $word1 = $vals[0];
 
-        $sth = $dbh->prepare(<<SQL);
-SELECT ego
-  FROM alterego_r
- WHERE num = $nums[1]
-SQL
-        @row = $dbh->selectrow_array($sth, undef);
-        my $r = lc($row[0] ? $row[0] : '???');
+        @vals = $dbh->selectrow_array("SELECT word FROM alterego2, bug_alterego_map WHERE alterego2.alterego2_id = bug_alterego_map.alterego2_id AND bug_alterego_map.bug_id = ?", undef, $self->{'bug_id'});
+        my $word2 = $vals[0];
 
-        return "$l $r"
-#        return "$l $r ($nums[0]/$nums[1])"
+        return "$word1 $word2";
     }
 }
 
