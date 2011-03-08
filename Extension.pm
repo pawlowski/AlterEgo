@@ -11,86 +11,10 @@ use POSIX qw(floor);
 
 use base qw(Bugzilla::Extension);
 
-our $VERSION = '1.0';
+our $VERSION = '0.1';
 use constant NAME => 'AlterEgo';
 
-sub db_schema_abstract_schema($$) {
-    my ($self, $args) = @_;
-    my $schema = $args->{schema};
-
-    $schema->{alterego1} = {
-        FIELDS => [
-            alterego1_id => {TYPE => 'MEDIUMSERIAL', NOTNULL => 1,
-                             PRIMARYKEY => 1},
-            word         => {TYPE => 'TINYTEXT', NOTNULL => 1},
-        ],
-        INDEXES => [
-            alterego1_word_idx  => {FIELDS => ['word'],
-                                     TYPE   => 'UNIQUE'},
-        ],
-    };
-
-    $schema->{alterego2} = {
-        FIELDS => [
-            alterego2_id => {TYPE => 'MEDIUMSERIAL', NOTNULL => 1,
-                             PRIMARYKEY => 1},
-            word         => {TYPE => 'TINYTEXT', NOTNULL => 1},
-        ],
-        INDEXES => [
-            alterego2_word_idx  => {FIELDS => ['word'],
-                                     TYPE   => 'UNIQUE'},
-        ],
-    };
-
-    $schema->{bug_alterego_map} = {
-        FIELDS => [
-                   bug_id       => {TYPE => 'INT3', NOTNULL => 1,
-                                    REFERENCES => {TABLE => 'bugs',
-                                                   COLUMN => 'bug_id',
-                                                   DELETE => 'CASCADE'}},
-                   alterego1_id => {TYPE => 'INT3', NOTNULL => 1,
-                                    REFERENCES => {TABLE => 'alterego1',
-                                                   COLUMN => 'alterego1_id',
-                                                   DELETE => 'CASCADE'}},
-                   alterego2_id => {TYPE => 'INT3', NOTNULL => 1,
-                                    REFERENCES => {TABLE => 'alterego2',
-                                                   COLUMN => 'alterego2_id',
-                                                   DELETE => 'CASCADE'}},
-        ],
-        INDEXES => [
-            bug_alterego_map_bug_id_idx =>
-                {FIELDS => [qw(bug_id alterego1_id alterego2_id)],
-                 TYPE => 'UNIQUE'},
-        ],
-    };
-}
-
-sub import_alterego_words {
-    my ($filename, $tablename) = @_;
-    my $dbh = Bugzilla->dbh;
-
-    # Get the currently entered words
-    my $rows = $dbh->selectall_arrayref("SELECT word FROM $tablename");
-    my ($row, %existing);
-    foreach $row (@{$rows}) {
-        $existing{$row->[0]} = 1;
-    }
-    print "  found " . (keys %existing) . " words in table $tablename, ";
-
-    # Use the word lists to populate the alterego word tables
-    my $words = new IO::File($filename, 'r')
-        || die "$filename: $!";
-    my $num_new_words = 0;
-    while (<$words>) {
-        chomp;
-        if (/./ && ! $existing{$_}) {
-            $dbh->do("INSERT INTO $tablename (word) VALUES (?)", undef, $_);
-            $num_new_words += 1;
-        }
-    }
-
-    print "added $num_new_words new ones.\n";
-}
+# ===== Add one AlterEgo =====
 
 sub add_alterego {
     my ($bugid) = @_;
@@ -127,6 +51,45 @@ sub add_alterego {
         # we've got a pair, add it to the database
         $dbh->do("INSERT INTO bug_alterego_map (bug_id, alterego1_id, alterego2_id) VALUES ($bugid, $alterego1, $alterego2)");
     }
+}
+
+# ===== Add AlterEgo at bug creation =====
+
+# HOOK
+sub post_bug_after_creation($$) {
+    my ($self, $args) = @_;
+
+    my $bug_id = $args->{vars}->{id};
+    add_alterego($bug_id);
+}
+
+# ===== Initial import =====
+
+sub import_alterego_words {
+    my ($filename, $tablename) = @_;
+    my $dbh = Bugzilla->dbh;
+
+    # Get the currently entered words
+    my $rows = $dbh->selectall_arrayref("SELECT word FROM $tablename");
+    my ($row, %existing);
+    foreach $row (@{$rows}) {
+        $existing{$row->[0]} = 1;
+    }
+    print "  found " . (keys %existing) . " words in table $tablename, ";
+
+    # Use the word lists to populate the alterego word tables
+    my $words = new IO::File($filename, 'r')
+        || die "$filename: $!";
+    my $num_new_words = 0;
+    while (<$words>) {
+        chomp;
+        if (/./ && ! $existing{$_}) {
+            $dbh->do("INSERT INTO $tablename (word) VALUES (?)", undef, $_);
+            $num_new_words += 1;
+        }
+    }
+
+    print "added $num_new_words new ones.\n";
 }
 
 sub add_alterego_all_bugs {
@@ -176,7 +139,8 @@ sub add_alterego_all_bugs {
     print ".\n";
 }
 
-sub install_update_db($$) {
+# HOOK
+sub install_update_db {
     print "AlterEgo: importing words...\n";
     my $alterego_dir = bz_locations()->{'extensionsdir'} . "/AlterEgo";
     import_alterego_words("$alterego_dir/words1.txt", "alterego1");
@@ -189,6 +153,9 @@ sub install_update_db($$) {
     # check that no duplicate alteregos exist
 }
 
+# ===== Display AlterEgo =====
+
+# HOOK
 sub disabled_bug_fields {
     # This is a hack. I'm monkey patching Bugzilla::Bug.
     # I'm using this hook because it is the easiest place to do it.
@@ -207,6 +174,60 @@ sub disabled_bug_fields {
 
         return "$word1 $word2";
     }
+}
+
+# ===== Schema =====
+
+# HOOK
+sub db_schema_abstract_schema($$) {
+    my ($self, $args) = @_;
+    my $schema = $args->{schema};
+
+    $schema->{alterego1} = {
+        FIELDS => [
+            alterego1_id => {TYPE => 'MEDIUMSERIAL', NOTNULL => 1,
+                             PRIMARYKEY => 1},
+            word         => {TYPE => 'TINYTEXT', NOTNULL => 1},
+        ],
+        INDEXES => [
+            alterego1_word_idx  => {FIELDS => ['word'],
+                                     TYPE   => 'UNIQUE'},
+        ],
+    };
+
+    $schema->{alterego2} = {
+        FIELDS => [
+            alterego2_id => {TYPE => 'MEDIUMSERIAL', NOTNULL => 1,
+                             PRIMARYKEY => 1},
+            word         => {TYPE => 'TINYTEXT', NOTNULL => 1},
+        ],
+        INDEXES => [
+            alterego2_word_idx  => {FIELDS => ['word'],
+                                     TYPE   => 'UNIQUE'},
+        ],
+    };
+
+    $schema->{bug_alterego_map} = {
+        FIELDS => [
+                   bug_id       => {TYPE => 'INT3', NOTNULL => 1,
+                                    REFERENCES => {TABLE => 'bugs',
+                                                   COLUMN => 'bug_id',
+                                                   DELETE => 'CASCADE'}},
+                   alterego1_id => {TYPE => 'INT3', NOTNULL => 1,
+                                    REFERENCES => {TABLE => 'alterego1',
+                                                   COLUMN => 'alterego1_id',
+                                                   DELETE => 'CASCADE'}},
+                   alterego2_id => {TYPE => 'INT3', NOTNULL => 1,
+                                    REFERENCES => {TABLE => 'alterego2',
+                                                   COLUMN => 'alterego2_id',
+                                                   DELETE => 'CASCADE'}},
+        ],
+        INDEXES => [
+            bug_alterego_map_bug_id_idx =>
+                {FIELDS => [qw(bug_id alterego1_id alterego2_id)],
+                 TYPE => 'UNIQUE'},
+        ],
+    };
 }
 
 __PACKAGE__->NAME;
