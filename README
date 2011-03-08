@@ -6,8 +6,6 @@ Run checksetup.pl, it will import all the words into the bugzilla db and add ali
 
 Need to:
 
-* add alteregos to bugs that don't have one
-
 * Display alterego in bug editing page
 * Display alterego in bug list pages
 * add alterego when creating a new bug
@@ -18,3 +16,16 @@ Done:
 
 * load words from the word files into the db during init
 * only add new words that are not already in the db
+* add alteregos to bugs that don't have one
+
+Desired traits of words (exceptions occur for all of them):
+
+* Two syllables
+* Seven or fewer letters
+* Non-technical
+* Non-exotic: very simple English words that everyone will be familiar with
+* Visual or physical meaning: evokes a visual memory in the reader/listener
+* Easy to pronounce
+* No homophones (other words that sound the same but are spelled differently)
+* Familiar, simple meanings that non-native English speakers would know
+* Not hard to pronounce by non-native English speakers
